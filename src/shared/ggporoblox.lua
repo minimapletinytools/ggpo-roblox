@@ -38,7 +38,6 @@ export type GGPORobloxRCC = GGPORobloxRCC_ & GGPORobloxEvents & GGPORobloxCommon
 
 
 local function isMessageInput(message : any) : boolean
-  -- TODO
   return type(message) == "table" and message.input ~= nil
 end
 
@@ -153,7 +152,7 @@ local function GGPORobloxPlayer_new<T,I>(config: GGPORobloxConfig<T,I>, owner : 
   assert(unreliableRemoteEvent, "UnreliableRemoteEvent not found, this probably means you forgot to initialize the ggpo CARS server or you're having serious connection issues")
 
   local ggporoblox = {} :: GGPORobloxPlayer
-
+1
   reliableRemoteEvent.OnClientEvent:Connect(function(...)
     print("Received reliable event from server")
     local args = {...}
