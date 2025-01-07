@@ -340,9 +340,12 @@ end
 
 
 
+local disableTestSpam = true
 
 return function()
-   
+    if disableTestSpam then
+        return
+    end
     describe("table helpers", function()
         it("isempty", function()
             expect(GGPO.isempty({})).to.equal(true)

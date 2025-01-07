@@ -323,7 +323,6 @@ export type GameConfig<I> = {
     --serializeInput : (I,J) -> string,
 }
 
-
 local defaultGameConfig = {
     inputDelay = 0,
     maxPredictionFrames = 8,
@@ -1592,7 +1591,6 @@ end
 -- GGPO_Peer
 -- T: game state type
 -- I: player input type
--- J: game info type
 export type GGPO_Peer<T,I> = {
     
     gameConfig : GameConfig<I>,
