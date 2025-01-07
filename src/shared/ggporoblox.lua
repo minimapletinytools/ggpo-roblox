@@ -64,10 +64,10 @@ local function GGPORobloxRCC_new<T,I>(config: GGPORobloxConfig<T,I>) : GGPORoblo
   reliableRemoteEvent.OnServerEvent:Connect(function(player : Player, ... : any)
     print("Received reliable event from player " .. tostring(player.UserId))
     local args = {...}
-    if args[0] == nil or not isGGPORobloxServerToClientReliableEvents(args[0]) then
+    if args[1] == nil or not isGGPORobloxServerToClientReliableEvents(args[1]) then
       error("Received reliable event with no event type")
     end
-    local eventType : GGPORobloxClientToServerReliableEvents = args[0]
+    local eventType : GGPORobloxClientToServerReliableEvents = args[1]
     processServerToClientReliableEvent(ggporoblox, player, eventType, table.unpack(args, 1))
   end)
   unreliableRemoteEvent.OnServerEvent:Connect(function(player : Player, ...)
@@ -157,10 +157,10 @@ local function GGPORobloxPlayer_new<T,I>(config: GGPORobloxConfig<T,I>, owner : 
   reliableRemoteEvent.OnClientEvent:Connect(function(...)
     print("Received reliable event from server")
     local args = {...}
-    if args[0] == nil or not isGGPORobloxServerToClientReliableEvents(args[0]) then
+    if args[1] == nil or not isGGPORobloxServerToClientReliableEvents(args[1]) then
       error("Received reliable event with no event type")
     end
-    local eventType : GGPORobloxServerToClientReliableEvents = args[0]
+    local eventType : GGPORobloxServerToClientReliableEvents = args[1]
     processServerToClientReliableEvent(ggporoblox, eventType, table.unpack(args, 1))
   end)
   unreliableRemoteEvent.OnClientEvent:Connect(function(...)
