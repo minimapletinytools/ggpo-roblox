@@ -91,6 +91,9 @@ V2-allow self to be flagged as authoritative inside sync/inputqueue
 V2-figure out how to handle initial player data
   -prob best just to recommend X frames for syncing initial state and rift
   -send player data as server input on frame 0
+V2-immediate input sending
+  -you have an entire frame to collect input but they can be sent immediately, 
+    -allow client to override inputs by resending them.. .need to figure out how to fix synchronization...
 
 IGNORE/DONE-add disconnect tracking
 IGNORE/DONE-figure out what to do when player is disconnect

@@ -1635,7 +1635,7 @@ end
 
 
 -- NOTE this is only for setting up our peers, not the game!
--- in particular, is a CARS setting this is called for all peers on the server
+-- in particular, if CARS this is called for all peers on the server
 -- and called for just the server on each peer
 local function GGPO_Peer_AddPeer<T,I>(peer : GGPO_Peer<T,I>, player : PlayerHandle, endpoint : UDPEndpoint<I>)
 
@@ -1870,8 +1870,6 @@ return {
     UDPProto_Player_new = UDPProto_Player_new,
     UDPProto_ClearInputsBefore = UDPProto_ClearInputsBefore,
     UDPProto_new = UDPProto_new,
-
-
 
     GameInput_new = GameInput_new,
     GGPO_Peer_new = GGPO_Peer_new,

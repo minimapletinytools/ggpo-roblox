@@ -26,7 +26,27 @@ end
 
 export type GGPORobloxCommon = {
   state : GGPORobloxState,
+  -- uses UserId as PlayerHandle for Players
+  peer : GGPO.GGPO_Peer,
 }
+
+local GGPOROBLOX_POLL_INTERVAL = 0.01 -- seconds
+
+local function GGPORobloxCommon_Run(ggporoblox : GGPORobloxCommon)
+  while true do
+    GGPO.GGPO_Peer_DoPoll(ggporoblox.peer)
+    wait(GGPOROBLOX_POLL_INTERVAL)
+  end
+end
+
+local function GGPORobloxCommon_AddLocalInput(ggporoblox : GGPORobloxCommon)
+
+  -- TODO
+  local inputs = {}
+
+  local ggpoinput = GGPO.GameInput_new(ggporoblox.peer.sync.framecount, inputs)
+  GGPO.GGPO_Peer_AddLocalInput(ggporoblox.peer, ggpoinput)
+end
 
 export type GGPORobloxRCC_ = {
   playerMapping : Bimap.Bimap<GGPO.PlayerHandle, Player>,
@@ -52,13 +72,15 @@ end
 
 local function GGPORobloxRCC_new<T,I>(config: GGPORobloxConfig<T,I>) : GGPORobloxRCC
 
+  local ggporoblox = {} :: GGPORobloxRCC
+
   -- initialize the required Instances
   local root = Instance.new("Folder", game.Workspace)
   root.Name = "ggpo-roblox"
   local reliableRemoteEvent = Instance.new("RemoteEvent", root)
   local unreliableRemoteEvent = Instance.new("UnreliableRemoteEvent", root)
-
-  local ggporoblox = {} :: GGPORobloxRCC
+  ggporoblox.reliableRemoteEvent = reliableRemoteEvent
+  ggporoblox.unreliableRemoteEvent = unreliableRemoteEvent
 
   reliableRemoteEvent.OnServerEvent:Connect(function(player : Player, ... : any)
     print("Received reliable event from player " .. tostring(player.UserId))
@@ -69,20 +91,12 @@ local function GGPORobloxRCC_new<T,I>(config: GGPORobloxConfig<T,I>) : GGPORoblo
     local eventType : GGPORobloxClientToServerReliableEvents = args[1]
     processServerToClientReliableEvent(ggporoblox, player, eventType, table.unpack(args, 1))
   end)
-  unreliableRemoteEvent.OnServerEvent:Connect(function(player : Player, ...)
-    print("Received unreliable event from player " .. tostring(player.UserId))
-
-    if isMessageInput(...) then
-      print("Received input message from player " .. tostring(player.UserId))
-      -- TODO pass input to ggpo
-    end
-  end)
-
   
-  ggporoblox.reliableRemoteEvent = reliableRemoteEvent
-  ggporoblox.unreliableRemoteEvent = unreliableRemoteEvent
   ggporoblox.playerMapping = Bimap.new()
   ggporoblox.state = "Initializing" :: GGPORobloxState
+
+  ggporoblox.peer = GGPO.GGPO_Peer_new(config.gameConfig, config.callbacks, GGPO.carsHandle)
+
 
   return ggporoblox
 end
@@ -99,28 +113,36 @@ end
 
 
 
--- TODO add comments
+local function GGPORobloxRCC_addAllPlayers(ggporoblox : GGPORobloxRCC)
+  -- TODO better way to filter for what players to add
+  -- add all players
+  local Players = game:GetService("Players") -- you should use GetService over game.Players!
+  for _, player in pairs(Players:GetPlayers()) do
+      local endpoint = {
+        send = function(msg : GGPO.UDPMsg<I>)
+          ggporoblox.unreliableRemoteEvent:FireClient(player, msg)
+        end,
+        subscribe = function(callback : (GGPO.UDPMsg<I>, player: GGPO.PlayerHandle)->())
+          ggporoblox.unreliableRemoteEvent.OnServerEvent:Connect(function(player : Player, ...)
+            print("Received unreliable event from player " .. tostring(player.UserId))
+        
+            local args = {...}
+      
+            -- TODO pass input to ggpo
+          end)    
+        end
+      }
+      GGPO.GGPO_Peer_AddPeer(ggporoblox.peer, player.UserId, endpoint)
+  end
+
+end
 
 local function GGPORobloxRCC_startGame(ggporoblox : GGPORobloxRCC)
 
+  GGPORobloxRCC_addAllPlayers(ggporoblox)
 
-  local config = GGPO.defaultGameConfig
+  -- TODO start the game
 
-  --TODO where do these come from
-  local callbacks = {
-    SaveGameState = function(frame : GGPO.Frame)
-      return {}
-    end,
-    LoadGameState = function(data : {}, frame : GGPO.Frame)
-    end,
-    AdvanceFrame = function()
-      -- TODO
-    end,
-  }
-
-  local ggpo = GGPO.GGPO_Peer_new(config, callbacks, GGPO.carsHandle)
-
-  
 end
 
 
@@ -144,15 +166,19 @@ local function processServerToClientReliableEvent(ggporoblox : GGPORobloxPlayer,
   end
 end
 
-local function GGPORobloxPlayer_new<T,I>(config: GGPORobloxConfig<T,I>, owner : GGPO.PlayerHandle) : GGPORobloxPlayer
+local function GGPORobloxPlayer_new<T,I>(config: GGPORobloxConfig<T,I>) : GGPORobloxPlayer
+
+  local ggporoblox = {} :: GGPORobloxPlayer
 
   -- grab the required Instances (they were created by the server)
   local reliableRemoteEvent = game.Workspace:WaitForChild("ggpo-roblox"):WaitForChild("RemoteEvent")
   local unreliableRemoteEvent = game.Workspace:WaitForChild("ggpo-roblox"):WaitForChild("UnreliableRemoteEvent")
   assert(unreliableRemoteEvent, "UnreliableRemoteEvent not found, this probably means you forgot to initialize the ggpo CARS server or you're having serious connection issues")
+  ggporoblox.reliableRemoteEvent = reliableRemoteEvent
+  ggporoblox.unreliableRemoteEvent = unreliableRemoteEvent
 
-  local ggporoblox = {} :: GGPORobloxPlayer
-1
+  
+
   reliableRemoteEvent.OnClientEvent:Connect(function(...)
     print("Received reliable event from server")
     local args = {...}
@@ -162,22 +188,31 @@ local function GGPORobloxPlayer_new<T,I>(config: GGPORobloxConfig<T,I>, owner : 
     local eventType : GGPORobloxServerToClientReliableEvents = args[1]
     processServerToClientReliableEvent(ggporoblox, eventType, table.unpack(args, 1))
   end)
-  unreliableRemoteEvent.OnClientEvent:Connect(function(...)
-    print("Received unreliable event from server")
 
-    local args = {...}
-
-    -- TODO pass input to ggpo
-  end)
-
-  ggporoblox.reliableRemoteEvent = reliableRemoteEvent
-  ggporoblox.unreliableRemoteEvent = unreliableRemoteEvent
-  ggporoblox.owner = owner
+  local Players = game:GetService("Players") -- you should use GetService over game.Players!
+  ggporoblox.owner = Players.LocalPlayer.UserId
   ggporoblox.state = "Initializing"  :: GGPORobloxState
 
+  ggporoblox.peer = GGPO.GGPO_Peer_new(config.gameConfig, config.callbacks, GGPO.carsHandle)
+
+
+  local endpoint = {
+    send = function(msg : GGPO.UDPMsg<I>)
+      ggporoblox.unreliableRemoteEvent:FireServer(msg)
+    end,
+    subscribe = function(callback : (GGPO.UDPMsg<I>, player: GGPO.PlayerHandle)->())
+      unreliableRemoteEvent.OnClientEvent:Connect(function(...)
+        print("Received unreliable event from server")
+    
+        local args = {...}
+    
+        -- TODO pass input to ggpo
+      end)    
+    end
+  }
+  GGPO.GGPO_Peer_AddPeer(ggporoblox.peer, GGPO.carsHandle, endpoint)
   return ggporoblox
 end
-
 
 
 
